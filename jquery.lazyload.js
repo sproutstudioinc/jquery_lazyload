@@ -31,11 +31,18 @@
             load            : null,
             queue_length    : 4,
             queue_current   : 0,
+            unbind_on_complete: true,
             placeholder     : "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsQAAA7EAZUrDhsAAAANSURBVBhXYzh8+PB/AAffA0nNPuCLAAAAAElFTkSuQmCC"
         };
 
         function update() {
             var counter = 0;
+
+            // Remove our event listener if every image has been loaded
+            if (elements.length == 0 && settings.unbind_on_complete) {
+                $(window).off('resize', update);
+                $container.off(settings.event, update);
+            }
 
             elements.each(function() {
                 if (settings.queue_length && settings.queue_current >= settings.queue_length) {
@@ -79,14 +86,16 @@
             $.extend(settings, options);
         }
 
+        // Always start the currentqueue length at zero, even if the user passed
+        // in a length - because that doesn't actually make sense.
+        settings.queue_current = 0;
+
         /* Cache container as jQuery as object. */
         $container = (settings.container === undefined ||
                       settings.container === window) ? $window : $(settings.container);
 
         /* Fire one event handler per event. Not one event per image per event. */
-        $container.on(settings.event, function() {
-            return update();
-        });
+        $container.on(settings.event, update);
 
         this.each(function() {
             var self = this;
@@ -146,9 +155,7 @@
         });
 
         /* Check if something appears when window is resized. */
-        $window.on("resize", function() {
-            update();
-        });
+        $window.on("resize", update);
 
         /* With IOS5 force loading images when navigating with back button. */
         /* Non optimal workaround. */
@@ -163,9 +170,7 @@
         }
 
         /* Force initial check if images should appear. */
-        $(document).ready(function() {
-            update();
-        });
+        $(document).ready(update);
 
         return this;
     };
