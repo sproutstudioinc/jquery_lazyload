@@ -29,6 +29,8 @@
             skip_invisible  : false,
             appear          : null,
             load            : null,
+            queue_length    : 4,
+            queue_current   : 0,
             placeholder     : "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsQAAA7EAZUrDhsAAAANSURBVBhXYzh8+PB/AAffA0nNPuCLAAAAAElFTkSuQmCC"
         };
 
@@ -36,6 +38,10 @@
             var counter = 0;
 
             elements.each(function() {
+                if (settings.queue_length && settings.queue_current >= settings.queue_length) {
+                    return false;
+                }
+
                 var $this = $(this);
                 if (settings.skip_invisible && !$this.is(":visible")) {
                     return;
@@ -48,6 +54,8 @@
                         $this.trigger("appear");
                         /* if we found an image we'll load, reset the counter */
                         counter = 0;
+                        // Occupy a queue space
+                        if (settings.queue_length) settings.queue_current++;
                 } else {
                     if (++counter > settings.failure_limit) {
                         return false;
@@ -57,7 +65,7 @@
 
         }
 
-        if(options) {
+        if (options) {
             /* Maintain BC for a couple of versions. */
             if (undefined !== options.failurelimit) {
                 options.failure_limit = options.failurelimit;
@@ -75,12 +83,10 @@
         $container = (settings.container === undefined ||
                       settings.container === window) ? $window : $(settings.container);
 
-        /* Fire one scroll event per scroll. Not one scroll event per image. */
-        if (0 === settings.event.indexOf("scroll")) {
-            $container.on(settings.event, function() {
-                return update();
-            });
-        }
+        /* Fire one event handler per event. Not one event per image per event. */
+        $container.on(settings.event, function() {
+            return update();
+        });
 
         this.each(function() {
             var self = this;
@@ -125,20 +131,18 @@
                                 var elements_left = elements.length;
                                 settings.load.call(self, elements_left, settings);
                             }
+
+                            // If queuing is enabled, release a queue space and
+                            // call update to see if any unqueued items are ready
+                            if (settings.queue_length) {
+                                settings.queue_current = Math.max(settings.queue_current - 1, 0);
+                                update();
+                            }
+
                         })
                         .attr("src", $self.attr("data-" + settings.data_attribute));
                 }
             });
-
-            /* When wanted event is triggered load original image */
-            /* by triggering appear.                              */
-            if (0 !== settings.event.indexOf("scroll")) {
-                $self.on(settings.event, function() {
-                    if (!self.loaded) {
-                        $self.trigger("appear");
-                    }
-                });
-            }
         });
 
         /* Check if something appears when window is resized. */
