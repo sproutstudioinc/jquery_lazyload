@@ -23,6 +23,7 @@
             threshold       : 0,
             failure_limit   : 0,
             event           : "scroll",
+            event_container : null,
             effect          : "show",
             container       : window,
             data_attribute  : "original",
@@ -32,22 +33,27 @@
             queue_length    : 4,
             queue_current   : 0,
             unbind_on_complete: true,
+            loaded_class    : null,
             placeholder     : "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsQAAA7EAZUrDhsAAAANSURBVBhXYzh8+PB/AAffA0nNPuCLAAAAAElFTkSuQmCC"
         };
 
         function update() {
             var counter = 0;
 
-            // Remove our event listener if every image has been loaded
+            /* If every image has been loaded (or there were none) remove the
+            event listener */
             if (elements.length == 0 && settings.unbind_on_complete) {
                 $(window).off('resize', update);
                 $container.off(settings.event, update);
             }
 
             elements.each(function() {
+                /* If a queue length is provided and the queue is full, return */
                 if (settings.queue_length && settings.queue_current >= settings.queue_length) {
                     return false;
                 }
+
+                if (this.loading || this.loaded) return;
 
                 var $this = $(this);
                 if (settings.skip_invisible && !$this.is(":visible")) {
@@ -61,7 +67,7 @@
                         $this.trigger("appear");
                         /* if we found an image we'll load, reset the counter */
                         counter = 0;
-                        // Occupy a queue space
+                        /* Occupy a queue space if we have a defined queue size */
                         if (settings.queue_length) settings.queue_current++;
                 } else {
                     if (++counter > settings.failure_limit) {
@@ -86,22 +92,27 @@
             $.extend(settings, options);
         }
 
-        // Always start the currentqueue length at zero, even if the user passed
-        // in a length - because that doesn't actually make sense.
+        /* Always reset the currentqueue length at zero on init, even if the
+        user passed in a length - because that doesn't actually make sense. */
         settings.queue_current = 0;
 
         /* Cache container as jQuery as object. */
         $container = (settings.container === undefined ||
                       settings.container === window) ? $window : $(settings.container);
 
-        /* Fire one event handler per event. Not one event per image per event. */
-        $container.on(settings.event, update);
+        /* Determine which container to listen to events on, use $container if
+        not given an explicit instruction */
+        $event_container = (settings.event_container ? $(settings.event_container) : $container);
+
+        /* Fire one update per event, not one update per image per event. */
+        $event_container.on(settings.event, update);
 
         this.each(function() {
             var self = this;
             var $self = $(self);
 
             self.loaded = false;
+            self.loading = false;
 
             /* If no src attribute given use data:uri. */
             if ($self.attr("src") === undefined || $self.attr("src") === false) {
@@ -113,6 +124,7 @@
             /* When appear is triggered load original image. */
             $self.one("appear", function() {
                 if (!this.loaded) {
+                    self.loading = true;
                     if (settings.appear) {
                         var elements_left = elements.length;
                         settings.appear.call(self, elements_left, settings);
@@ -126,9 +138,15 @@
                             } else {
                                 $self.css("background-image", "url('" + original + "')");
                             }
+                            /* If a `loaded class` attribute was given, add that
+                            class to the loaded image */
+                            if (settings.loaded_class) {
+                              $self.addClass(settings.loaded_class);
+                            }
                             $self[settings.effect](settings.effect_speed);
 
                             self.loaded = true;
+                            self.loading = false;
 
                             /* Remove image from array so it is not looped next time. */
                             var temp = $.grep(elements, function(element) {
@@ -141,11 +159,11 @@
                                 settings.load.call(self, elements_left, settings);
                             }
 
-                            // If queuing is enabled, release a queue space and
-                            // call update to see if any unqueued items are ready
+                            /* If usign queuing, release a queue space and call
+                            update to see if any unqueued items are ready */
                             if (settings.queue_length) {
                                 settings.queue_current = Math.max(settings.queue_current - 1, 0);
-                                update();
+                                if (elements.length) update();
                             }
 
                         })

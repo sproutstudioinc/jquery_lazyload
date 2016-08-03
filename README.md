@@ -7,9 +7,13 @@ Using Lazy Load on long web pages containing many large images makes the page lo
 
 Lazy Load is inspired by [YUI ImageLoader](http://developer.yahoo.com/yui/imageloader/) Utility by Matt Mlinac.
 
-This fork adds a Queue Length option. If you're scrolling past a large number of images, the queue prevents every image from triggering instantly as it passes the viewport.  This means that if you're quickly scrolling to the bottom of a large list of images, only a handful will initially load at the top and as you scroll by, and the bulk will be loaded where you stop scrolling.  This can be crucial for providing a responsive experience with longer image galleries.
+This fork adds the following options:
 
-This fork also changes the behaviour of custom events to trigger once per event rather than once per image, and to call the lazyload `update` function rather than directly triggering `appear` on each individual image.  This results in fewer event calls, and allows the queue to work properly if specified.
+- `queue_length` - specifies a maximum number of images to load simultaneously. If you're scrolling past a large number of images, the queue prevents every image from triggering instantly as it passes the viewport.  This means that if you're quickly scrolling to the bottom of a large list of images, only a handful will initially load at the top and as you scroll by, and the bulk will be loaded where you stop scrolling.  This can be crucial for providing a responsive experience with longer image galleries.  Lazy Load will operate as usual if this parameter is not set, or is set to 0.
+- `loaded_class` - a CSS class to add to each image upon load, to indicate that it has in fact been loaded.
+- `unbind_on_complete` - if the Lazy Load update method is called and the set of images is empty (due to either being initialized on an empty set, or all images having been loaded) the event listener is unbound.
+- `event_container` - allows listening for the update event to a different element than `.lazyload()` is instantiated on.  For example, if you have `$('#container img.lazyload').lazyload()`, you may want to just assign a single event listener to the `#container` element instead.
+
 
 ## How to Use?
 
