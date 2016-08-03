@@ -116,7 +116,7 @@
 
             /* If no src attribute given use data:uri. */
             if ($self.attr("src") === undefined || $self.attr("src") === false) {
-                if ($self.is("img")) {
+                if ($self.is("img") && settings.placeholder) {
                     $self.attr("src", settings.placeholder);
                 }
             }
